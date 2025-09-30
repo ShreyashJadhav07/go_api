@@ -24,7 +24,22 @@ func SignUp(c *gin.Context) {
 	}
 
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err:= user.Validate();err!=nil{
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":err.Error(),
+		})
+		return
+
+	}
+
+	if user.Password !=user.ConfirmPassword{
+		c.JSON(http.StatusBadRequest,gin.H{
+			"error": "Password and Confirm Password do not match"})
+		return
+	}
+
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
 	if err != nil {
 		log.Printf("Error hashing password: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password securely."})
@@ -52,7 +67,7 @@ func SignUp(c *gin.Context) {
 
 	tokenString,err :=utils.GenerateToken(user.Email)
 	if err !=nil{
-		log.Printf("Error Generating JWT on signup: %V",err)
+		log.Printf("Error Generating JWT on signup: %v",err)
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error":"Failed to create session token after registration."})
 			return
@@ -63,7 +78,7 @@ func SignUp(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "User registered successfully",
-		"id":      newID,
+		"user_id":      newID,
 		"email":   user.Email,
 	})
 }
