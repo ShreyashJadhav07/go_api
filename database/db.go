@@ -1,4 +1,4 @@
-// This file is used to initialize and manage the global database connection.
+
 package database
 
 import (

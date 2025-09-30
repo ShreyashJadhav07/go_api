@@ -42,9 +42,9 @@ func SignUp(c *gin.Context) {
 	err = db.QueryRow(query, user.Email, hashedPassword).Scan(&newID)
 	
 	if err != nil {
-		// Handle database errors, particularly duplicate email (Unique Constraint Violation)
+		
 		log.Printf("Database insertion error: %v", err)
-		// For a duplicate email, PostgreSQL returns a specific error we catch and report as a 409 Conflict.
+	
 		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered. Please use a different email."})
 		return
 	}
@@ -60,8 +60,7 @@ func SignUp(c *gin.Context) {
 	c.SetCookie("token", tokenString, 60*60*24, "/", "localhost" ,false ,true)
 	
 
-	// 5. Success response.
-	// NOTE: We are intentionally using StatusCreated (201) here, not 200 OK.
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "User registered successfully",
 		"id":      newID,
