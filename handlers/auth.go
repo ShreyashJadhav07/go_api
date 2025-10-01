@@ -154,7 +154,7 @@ func Profile(c * gin.Context){
 }
 
 func Logout(c *gin.Context) {
-    // Expire the cookie
+    
     c.SetCookie("token", "", -1, "/", "", false, true)
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
