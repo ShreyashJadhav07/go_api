@@ -83,4 +83,80 @@ func SignUp(c *gin.Context) {
 	})
 }
 
+
+func Login(c *gin.Context){
+
+	var loginReq models.LoginRequest
+
+	if err :=c.ShouldBindJSON(&loginReq);
+	err != nil{
+		c.JSON(http.StatusBadRequest,gin.H{
+			"error":"Invalid input. Provide valid email and password"})
+			return
+	}
+
+	db :=database.GetDB()
+
+	var storedHash string
+	var userID int
+	query:= "SELECT id, password_hash FROM users WHERE email=$1 LIMIT 1"
+	err := db.QueryRow(query,loginReq.Email).Scan(&userID, &storedHash)
+
+	if err!=nil{
+		log.Printf("Login Failed:Email not found (%s)",loginReq.Email)
+		c.JSON(http.StatusUnauthorized ,gin.H{
+			"error": "Invalid email or password"})
+
+			return
+	}
+
+	if err:=bcrypt.CompareHashAndPassword([] byte(storedHash), []byte(loginReq.Password));
+	err!=nil{
+		log.Printf("Login failed: wrong password for %s",loginReq.Email)
+		c.JSON(http.StatusUnauthorized, gin.H{"error":"Invalid and password"})
+		return
+	}
+
+       tokenString,err :=utils.GenerateToken(loginReq.Email)
+	    if err !=nil{
+		log.Printf("Error Generating JWT on signup: %v",err)
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error":"Failed to create session token after registration."})
+			return
+	     }
+	    c.SetCookie("token", tokenString, 60*60*24, "/", "localhost" ,false ,true)
+
+		c.JSON(http.StatusOK,gin.H{
+			"message": "Login successful",
+			"user_id":userID,
+			"email":loginReq.Email,
+			"token": tokenString,
+		})
+
+	
+
+}
+
+
+
+func Profile(c * gin.Context){
+	userEmail,exists:=c.Get("userEmail")
+	if !exists{
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error":"Failed to get user from context"})
+			return
+	}
+
+	c.JSON(http.StatusOK,gin.H{
+		"message":"profile fetched succesfully",
+		"email": userEmail,
+	})
+}
+
+func Logout(c *gin.Context) {
+    // Expire the cookie
+    c.SetCookie("token", "", -1, "/", "", false, true)
+    c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
 	

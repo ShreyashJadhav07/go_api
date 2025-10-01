@@ -1,7 +1,7 @@
 package utils
 
 import (
-
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -40,4 +40,19 @@ func GenerateToken(email string) (string,error){
 	}
 
 	return tokenString,nil
+}
+
+func ValidateToken(tokenString string) (*Claims, error){
+	claims:=&Claims{}
+
+	token,err:=jwt.ParseWithClaims(tokenString,claims,func(token *jwt.Token) (interface{}, error) {
+		return  jwtKey,nil
+
+	})
+
+	if err!=nil || !token.Valid{
+		return nil,fmt.Errorf("invalid token")
+	}
+
+	return claims,nil
 }
