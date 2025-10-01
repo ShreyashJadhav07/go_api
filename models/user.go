@@ -12,6 +12,11 @@ type User struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required,min=8,max=72"`
 }
 
+type LoginRequest struct{
+	Email  string `json:"email" binding:"required,email,max=255"`
+	Password string `json:"password" binding:"required,min=8,max=72"`
+}
+
 func (u *User) Validate() error {
 	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
 
