@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	
+	"database/sql"
 	"log"
 	"net/http"
 
@@ -134,6 +134,70 @@ func Login(c *gin.Context){
 		})
 
 	
+
+}
+
+
+
+
+
+func ForgotPassword(c *gin.Context){
+
+	var req models.ForgotPasswordRequest
+	if err :=c.ShouldBindJSON(&req) ; err!=nil{
+		c.JSON(http.StatusBadRequest,gin.H{
+			"error":"Invalid email format."})
+			return
+	}
+
+	db:=database.GetDB()
+	var userID int
+	var storedEmail string
+
+	query:="SELECT id, email FROM users WHERE email=$1 LIMIT 1"
+	err:=db.QueryRow(query,req.Email).Scan(&userID, &storedEmail)
+
+	if err!=nil{
+		if err == sql.ErrNoRows{
+			c.JSON(http.StatusOK,gin.H{"message":"If the email is registered,an otp has been sent."})
+			return
+		}
+		log.Printf("DB error checking user for forgot Password: %v",err)
+		c.JSON(http.StatusInternalServerError,gin.H{"error":"An internal error occurred"})
+		return
+	}
+
+	otpCode:=utils.GenerateOTP()
+	otpExpiry:=utils.ClaculateOTPExpiry()
+
+
+	updateQuery := `
+	UPDATE users
+	SET otp_code =$1,otp_expires_at = $2
+	WHERE id =$3
+	`
+	_,err =db.Exec(updateQuery,otpCode,otpExpiry,userID)
+	if err!=nil{
+		log.Printf("DB error saving OTP for user %d: %v",userID,err)
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error":"Failed to generate reset code."})
+			return
+	}
+
+	go func ()  {
+		if emailErr:=utils.SendEmail(storedEmail,otpCode);
+		emailErr !=nil {
+			log.Printf("CRITICAL:Failed to send OTP email to %s: %V",storedEmail,emailErr)
+		}
+		
+	}()
+
+		c.JSON(http.StatusOK, gin.H{
+		"message": "OTP sent successfully. Check your email.",
+		
+		 "otp": otpCode, 
+	})
+
 
 }
 
