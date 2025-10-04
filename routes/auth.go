@@ -16,6 +16,9 @@ func AuthRoutes(r *gin.Engine) {
 		api.POST("/login",handlers.Login)
 	    api.GET("/profile",middleware.AuthMiddleWare(),handlers.Profile)
 		api.POST("/logout",handlers.Logout)
+
+		api.POST("/forgot-password",handlers.ForgotPassword)
+		api.POST("/reset-password",handlers.ResetPassword)
 	
 
 	}

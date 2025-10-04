@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	"auth_api/database"
 	"auth_api/models"
@@ -201,6 +202,84 @@ func ForgotPassword(c *gin.Context){
 
 }
 
+
+func ResetPassword (c * gin.Context){
+	var req models.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: ensure email, 6-digit OTP, and 8+ character passwords are provided."})
+		return
+	}
+
+	if req.Password != req.ConfirmPassword{
+		c.JSON(http.StatusBadRequest,gin.H{"error":"Password and Confirm Password must match."})
+		return
+	}
+	db:=database.GetDB()
+	var storedOTP sql.NullString
+	var otpExpiry sql.NullTime
+	var userID int
+
+	query := `
+		SELECT id, otp_code, otp_expires_at
+		FROM users 
+		WHERE email=$1 
+		LIMIT 1
+	`
+	err := db.QueryRow(query, req.Email).Scan(&userID, &storedOTP, &otpExpiry)
+
+
+	if err != nil {
+
+		log.Printf("Reset Password error for %s: %v", req.Email, err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found or internal error."})
+		return
+	}
+
+
+	if !storedOTP.Valid || !otpExpiry.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "OTP has not been requested or has already been used."})
+		return
+	}
+
+	if time.Now().After(otpExpiry.Time){
+		db.Exec("UPDATE users SET otp_code = NULL,otp_expires_at = NULL WHERE id = $1",userID)
+		c.JSON(http.StatusUnauthorized,gin.H{"error":"OTP Expired please request a new one"})
+		return
+	}
+
+	if storedOTP.String !=req.OTP {
+		c.JSON(http.StatusUnauthorized,gin.H{
+			"error":"The Provided OTP is incorrect."})
+			return
+	}
+
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+	if err != nil {
+		log.Printf("Error hashing new password: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process new password securely."})
+		return
+	}
+
+	updateQuery := `
+		UPDATE users 
+		SET password_hash = $1, otp_code = NULL, otp_expires_at = NULL 
+		WHERE id = $2
+	`
+	_, err = db.Exec(updateQuery, hashedPassword, userID)
+	if err != nil {
+		log.Printf("DB error updating password for user %d: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password."})
+		return
+	}
+
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Password reset successfully. You can now log in with your new password.",
+	})
+
+
+}
 
 
 func Profile(c * gin.Context){
