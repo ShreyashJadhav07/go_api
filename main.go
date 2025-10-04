@@ -1,7 +1,6 @@
 package main
 
 import (
-
 	"auth_api/database"
 	"auth_api/routes"
 	"log"
@@ -9,7 +8,6 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	
 )
 
 
@@ -20,6 +18,7 @@ func main() {
 	router:=gin.Default()
 
 	routes.AuthRoutes(router)
+	routes.CredentialRoutes(router)
 
    
 
